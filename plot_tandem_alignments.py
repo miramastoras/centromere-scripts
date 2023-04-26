@@ -87,7 +87,7 @@ def parse_cigar(cigar):
     return parsed
 
 def plot_lines(drawing, matches, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
-               line_width, color, alpha = 1.0):
+               line_width, color):
     
     coord_multiplier = float(long_side) / max(seq1_end - seq1_begin, seq2_end - seq2_begin)
     num_lines = 0
@@ -107,7 +107,7 @@ def plot_lines(drawing, matches, seq1_begin, seq1_end, seq2_begin, seq2_end, lon
     return num_lines
 
 def plot_cigar(drawing, cigar, ref_begin, ref_end, query_begin, query_end, long_side,
-               line_width, match_color, mismatch_color, alpha = 1.0):
+               line_width, match_color, mismatch_color):
     
     coord_multiplier = float(long_side) / max(ref_end - ref_begin, query_end - query_begin)
     num_segments = 0
@@ -241,28 +241,88 @@ def get_matched_chroms(aln_identity_table):
                 
     return child, matched_chrom
 
+def parse_anchoring(table):
+    
+    anchors = []
+    
+    with open(table) as f:
+        f.readline() # skip the header
+        for line in f:
+            tokens = line.strip().split()
+            i = int(tokens[0])
+            j = int(tokens[1])
+            l = int(tokens[2])
+            anchors.append((i, j, l))
+    return anchors
+
+def plot_anchoring(drawing, anchors, ref_begin, ref_end, query_begin, query_end, long_side,
+                   line_width, connector_width, color):
+    
+    coord_multiplier = float(long_side) / max(ref_end - ref_begin, query_end - query_begin)
+    num_segments = 0
+
+    
+    prev_x_end = None
+    prev_y_end = None
+    prev_inside = False
+    for i, j, l in anchors:
+        
+            
+        x_begin = (i - query_begin) * coord_multiplier
+        x_end = (i + l - query_begin) * coord_multiplier
+        y_begin = (j - ref_begin) * coord_multiplier
+        y_end = (j + l - ref_begin) * coord_multiplier
+    
+        inside = ((j >= ref_begin and j < ref_end and i >= query_begin and i < query_end) or
+                  (j + l >= ref_begin and j + l < ref_end and i + l >= query_begin and i + l < query_end))
+        
+        if inside:
+            drawing.add(drawing.line((x_begin, y_begin), (x_end, y_end), 
+                                     stroke = color, stroke_width = line_width))
+            
+            num_segments += 1
+        
+        if prev_x_end is not None and (inside or prev_inside):
+            drawing.add(drawing.line((prev_x_end, prev_y_end), (x_begin, y_begin), 
+                                 stroke = color, stroke_width = connector_width))
+            num_segments += 1
+            
+        prev_x_end = x_end
+        prev_y_end = y_end
+        prev_inside = inside
+            
+        
+    print(f"added {num_segments} anchoring segments", file = sys.stderr)  
+    return num_segments      
+
 if __name__ == "__main__":
     
     # ref or query according to the cigar operations
     ref_fasta = sys.argv[1]
     query_fasta = sys.argv[2]
-    alignment = sys.argv[3]
+    alignments = sys.argv[3]
     out = sys.argv[4]
+    
+    # i'm also repurposing this to plot centrolign anchoring
+    is_cigar = True
+    if len(sys.argv) >= 6:
+        is_cigar = bool(int(sys.argv[5]))
     
     ref = parse_fasta(ref_fasta)
     query = parse_fasta(query_fasta)
     
-    min_length = 1024
+    min_length = 768
     
     seq1_begin = 0
     seq1_end = len(ref)
     seq2_begin = 0
     seq2_end = len(query)
     
-    long_side = 3000
-    mem_line_width = 3
-    mum_line_width = 5
-    alignment_line_width = 3
+    long_side = 4000
+    mem_line_width = 1
+    mum_line_width = 2
+    alignment_line_width = 1.5
+    connector_width = 0.5
     
     mems, mums = get_matches(ref_fasta, query_fasta, min_length)
     
@@ -274,7 +334,6 @@ if __name__ == "__main__":
     seq1_len = seq1_end - seq2_begin
     seq2_len = seq2_end - seq2_begin
     
-    cigar = parse_cigar(open(alignment).read().strip())
     
     
     multiplier1 = float(seq1_len) / max(seq1_len, seq2_len)
@@ -295,10 +354,26 @@ if __name__ == "__main__":
     print("plotting MUMs", file = sys.stderr)
     
     num_lines += plot_lines(drawing, mums, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
-                            mum_line_width, "darkred")
+                            mum_line_width, "lightcoral")
     
-    num_lines += plot_cigar(drawing, cigar, seq1_begin, seq1_end, seq1_begin, seq1_end, long_side,
-                            alignment_line_width, "darkturquoise", "springgreen")
+    alignment_colors = [("darkturquoise", "springgreen"), ("mediumpurple", "violet"),
+                        ("peru", "sandybrown"), ("lightslategray", "lightsteelblue"), ("goldenrod", "gold")]
+    
+    if is_cigar:
+        alignment_names = alignments.split(',')
+        for i in range(len(alignment_names)):
+            alignment = alignment_names[i]
+            cigar = parse_cigar(open(alignment).read().strip())
+        
+            print("plotting alignment", file = sys.stderr)
+            
+            match_color, mismatch_color = alignment_colors[i % len(alignment_colors)]
+            num_lines += plot_cigar(drawing, cigar, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
+                                    alignment_line_width, match_color, mismatch_color)
+    else:
+        anchors = parse_anchoring(alignment)
+        num_lines += plot_anchoring(drawing, anchors, seq1_begin, seq1_end, seq1_begin, seq1_end, long_side,
+                                    alignment_line_width, connector_width, "forestlengreen")
     
     plot_ticks(drawing, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side)
     
