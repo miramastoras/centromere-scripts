@@ -18,62 +18,64 @@ def construct_chain_graph(left_intervals, right_intervals, max_gap):
     
     # add edges within the left side
     for i in range(len(left_intervals)):
-        contig1, contig_b1, contig_e1, flank_b1, flank_e1 = left_intervals[i]
+        contig1, contig_b1, contig_e1, flank_b1, flank_e1, rev1 = left_intervals[i]
         for j in range(i + 1, len(left_intervals)):
-            contig2, contig_b2, contig_e2, flank_b2, flank_e2 = left_intervals[j]
+            contig2, contig_b2, contig_e2, flank_b2, flank_e2, rev2 = left_intervals[j]
+            if rev1 != rev2 or contig1 != contig2:
+                continue
 #            print("from left", left_intervals[i])
 #            print("to left", left_intervals[j])
-            if contig1 == contig2:
-                # they are mapped to the same contig
-                if (contig_e1 <= contig_b2 and flank_e1 <= flank_b2 and 
-                    contig_b2 - contig_e1 <= max_gap and flank_b2 - flank_e1 <= max_gap):
-                    # there is a forward edge
-                    graph[2 * i].append(2 * j)
-                    graph[2 * j + 1].append(2 * i + 1)
-#                    print("add forward edges")
-                if (contig_e2 <= contig_b1 and flank_e2 <= flank_b1 and
-                    contig_b1 - contig_e2 <= max_gap and flank_b1 - flank_e2 <= max_gap):
-                    # there is a reverse edge
-                    graph[2 * j].append(2 * i)
-                    graph[2 * i + 1].append(2 * j + 1)
-#                    print("add reverse edge")
+            if (contig_e1 <= contig_b2 and flank_e1 <= flank_b2 and 
+                contig_b2 - contig_e1 <= max_gap and flank_b2 - flank_e1 <= max_gap):
+                # there is a forward edge
+                graph[2 * i].append(2 * j)
+                graph[2 * j + 1].append(2 * i + 1)
+#                print("add forward edges")
+            if (contig_e2 <= contig_b1 and flank_e2 <= flank_b1 and
+                contig_b1 - contig_e2 <= max_gap and flank_b1 - flank_e2 <= max_gap):
+                # there is a reverse edge
+                graph[2 * j].append(2 * i)
+                graph[2 * i + 1].append(2 * j + 1)
+#                print("add reverse edge")
               
     # add edges between the left and right sides      
     for i in range(len(left_intervals)):
-        contig1, contig_b1, contig_e1, flank_b1, flank_e1 = left_intervals[i]
+        contig1, contig_b1, contig_e1, flank_b1, flank_e1, rev1 = left_intervals[i]
         for j in range(len(right_intervals)):
 #            print("from left", left_intervals[i])
 #            print("to right", right_intervals[j])
-            contig2, contig_b2, contig_e2, flank_b2, flank_e2 = right_intervals[j]
-            if contig1 == contig2:
-                if contig_e1 <= contig_b2:
-                    graph[2 * i].append(2 * len(left_intervals) + 2 * j)
-#                    print("add forward edge")
-                if contig_e2 <= contig_b1:
-                    graph[2 * i + 1].append(2 * len(left_intervals) + 2 * j + 1)
-#                    print("add reverse edge")
+            contig2, contig_b2, contig_e2, flank_b2, flank_e2, rev2 = right_intervals[j]
+            if rev1 != rev2 or contig1 != contig2:
+                continue
+            if contig_e1 <= contig_b2:
+                graph[2 * i].append(2 * len(left_intervals) + 2 * j)
+#                print("add forward edge")
+            if contig_e2 <= contig_b1:
+                graph[2 * i + 1].append(2 * len(left_intervals) + 2 * j + 1)
+#                print("add reverse edge")
             
     for i in range(len(right_intervals)):
-        contig1, contig_b1, contig_e1, flank_b1, flank_e1 = right_intervals[i]
+        contig1, contig_b1, contig_e1, flank_b1, flank_e1, rev1 = right_intervals[i]
         # add edges within the right side
         for j in range(i + 1, len(right_intervals)):
-            contig2, contig_b2, contig_e2, flank_b2, flank_e2 = right_intervals[j]
+            contig2, contig_b2, contig_e2, flank_b2, flank_e2, rev1 = right_intervals[j]
+            if rev1 != rev2 or contig1 != contig2:
+                continue
 #            print("from right", right_intervals[i])
 #            print("to right", right_intervals[j])
-            if contig1 == contig2:
-                # they are mapped to the same contig
-                if (contig_e1 <= contig_b2 and flank_e1 <= flank_b2 and 
-                    contig_b2 - contig_e1 <= max_gap and flank_b2 - flank_e1 <= max_gap):
-                    # there is a forward edge
-                    graph[2 * len(left_intervals) + 2 * i].append(2 * len(left_intervals) + 2 * j)
-                    graph[2 * len(left_intervals) + 2 * j + 1].append(2 * len(left_intervals) + 2 * i + 1)
-#                    print("add forward edge")
-                if (contig_e2 <= contig_b1 and flank_e2 <= flank_b1 and
-                    contig_b1 - contig_e2 <= max_gap and flank_b1 - flank_e2 <= max_gap):
-                    # there is a reverse edge
-                    graph[2 * len(left_intervals) + 2 * j].append(2 * len(left_intervals) + 2 * i)
-                    graph[2 * len(left_intervals) + 2 * i + 1].append(2 * len(left_intervals) + 2 * j + 1)
-#                    print("add reverse edge")
+            # they are mapped to the same contig
+            if (contig_e1 <= contig_b2 and flank_e1 <= flank_b2 and 
+                contig_b2 - contig_e1 <= max_gap and flank_b2 - flank_e1 <= max_gap):
+                # there is a forward edge
+                graph[2 * len(left_intervals) + 2 * i].append(2 * len(left_intervals) + 2 * j)
+                graph[2 * len(left_intervals) + 2 * j + 1].append(2 * len(left_intervals) + 2 * i + 1)
+#                print("add forward edge")
+            if (contig_e2 <= contig_b1 and flank_e2 <= flank_b1 and
+                contig_b1 - contig_e2 <= max_gap and flank_b1 - flank_e2 <= max_gap):
+                # there is a reverse edge
+                graph[2 * len(left_intervals) + 2 * j].append(2 * len(left_intervals) + 2 * i)
+                graph[2 * len(left_intervals) + 2 * i + 1].append(2 * len(left_intervals) + 2 * j + 1)
+#                print("add reverse edge")
             
     return graph
 
@@ -144,13 +146,6 @@ def graph_dp(graph, left_intervals, right_intervals):
                 opt_value = value
                 opt_index = j
 
-            
-#    print(left_intervals)
-#    print(right_intervals)
-#    print(graph)
-#    print(dp)
-#    print(backpointer)
-#    print(opt_index)
     
     if opt_index is None:
         return None, None, None
@@ -208,12 +203,16 @@ if __name__ == "__main__":
         # these are 0-based, half-open
         tokens = line.strip().split()
         
-        target_contig = tokens[0]
-        target_begin = int(tokens[1])
-        target_end = int(tokens[2])
-        flank = tokens[3]
-        flank_aligned_begin = int(tokens[4])
-        flank_aligned_end = int(tokens[5])
+        target_contig = tokens[5]
+        target_begin = int(tokens[7])
+        target_end = int(tokens[8])
+        if tokens[4] == '+':
+            rev = False
+        else:
+            rev = True
+        flank = tokens[0]
+        flank_aligned_begin = int(tokens[2])
+        flank_aligned_end = int(tokens[3])
         
         m = re.match(flank_regex, flank)
         
@@ -236,7 +235,7 @@ if __name__ == "__main__":
         if centro not in centromere_flank_alns:
             centromere_flank_alns[centro] = [[], []]
             
-        centromere_flank_alns[centro][side].append((target_contig, target_begin, target_end, flank_aligned_begin, flank_aligned_end))
+        centromere_flank_alns[centro][side].append((target_contig, target_begin, target_end, flank_aligned_begin, flank_aligned_end, rev))
     
     # header
     columns = ["centro_chrom", "centro_begin", "centro_end", "flank_contig", 

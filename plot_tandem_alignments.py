@@ -300,7 +300,7 @@ if __name__ == "__main__":
     # ref or query according to the cigar operations
     ref_fasta = sys.argv[1]
     query_fasta = sys.argv[2]
-    alignments = sys.argv[3]
+    alignments = sys.argv[3] # leave ampty to only plot MEMs
     out = sys.argv[4]
     
     # i'm also repurposing this to plot centrolign anchoring
@@ -311,7 +311,9 @@ if __name__ == "__main__":
     ref = parse_fasta(ref_fasta)
     query = parse_fasta(query_fasta)
     
-    min_length = 768
+    min_length = 500
+    
+    add_ticks = False
     
     seq1_begin = 0
     seq1_end = len(ref)
@@ -319,8 +321,10 @@ if __name__ == "__main__":
     seq2_end = len(query)
     
     long_side = 4000
-    mem_line_width = 1
-    mum_line_width = 2
+#    mem_line_width = 1
+#    mum_line_width = 2
+    mem_line_width = .025
+    mum_line_width = .05
     alignment_line_width = 1.5
     connector_width = 0.5
     
@@ -359,22 +363,24 @@ if __name__ == "__main__":
     alignment_colors = [("darkturquoise", "springgreen"), ("mediumpurple", "violet"),
                         ("peru", "sandybrown"), ("lightslategray", "lightsteelblue"), ("goldenrod", "gold")]
     
-    if is_cigar:
-        alignment_names = alignments.split(',')
-        for i in range(len(alignment_names)):
-            alignment = alignment_names[i]
-            cigar = parse_cigar(open(alignment).read().strip())
-        
-            print("plotting alignment", file = sys.stderr)
+    if len(alignments.strip()) != 0:
+        if is_cigar:
+            alignment_names = alignments.strip().split(',')
+            for i in range(len(alignment_names)):
+                alignment = alignment_names[i]
+                cigar = parse_cigar(open(alignment).read().strip())
             
-            match_color, mismatch_color = alignment_colors[i % len(alignment_colors)]
-            num_lines += plot_cigar(drawing, cigar, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
-                                    alignment_line_width, match_color, mismatch_color)
-    else:
-        anchors = parse_anchoring(alignment)
-        num_lines += plot_anchoring(drawing, anchors, seq1_begin, seq1_end, seq1_begin, seq1_end, long_side,
-                                    alignment_line_width, connector_width, "forestlengreen")
+                print("plotting alignment", file = sys.stderr)
+                
+                match_color, mismatch_color = alignment_colors[i % len(alignment_colors)]
+                num_lines += plot_cigar(drawing, cigar, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
+                                        alignment_line_width, match_color, mismatch_color)
+        else:
+            anchors = parse_anchoring(alignment)
+            num_lines += plot_anchoring(drawing, anchors, seq1_begin, seq1_end, seq1_begin, seq1_end, long_side,
+                                        alignment_line_width, connector_width, "forestlengreen")
     
-    plot_ticks(drawing, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side)
+    if add_ticks:
+        plot_ticks(drawing, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side)
     
     drawing.save()
