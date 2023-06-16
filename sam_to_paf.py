@@ -61,8 +61,8 @@ if __name__ == "__main__":
         if line.startswith("@"):
             if line.startswith("@SQ"):
                 ms = re.search("SN:(\S+)", line)
-                ml = re.search("SL:(\d+)", line)
-                contig_len[ms.group(1)] = int(ml.group(1))
+                ml = re.search("LN:(\d+)", line)
+                contig_lens[ms.group(1)] = int(ml.group(1))
             continue
         
         tokens = line.strip().split("\t")
@@ -74,7 +74,10 @@ if __name__ == "__main__":
         mapq = tokens[4]
         cigar = parse_cigar(tokens[5])
         seq_len = len(tokens[9])
-        contig_len = contig_lens[contig]
+        if contig == '*':
+            contig_len = 0
+        else:
+            contig_len = contig_lens[contig]
         
         if flag & 16:
             strand = '-'
@@ -87,8 +90,8 @@ if __name__ == "__main__":
         matches = num_matches(cigar)
         block_length = sum(c[1] for c in cigar)
         
-        #               0     1        2           3         4       5       6           7          8        9            10         11 
-        records.append((name, seq_len, read_start, read_end, strand, contig, contig_len, ref_start, ref_end, num_matches, block_len, mapq))
+        #               0     1        2           3         4       5       6           7          8        9        10            11 
+        records.append((name, seq_len, read_start, read_end, strand, contig, contig_len, ref_start, ref_end, matches, block_length, mapq))
         
     records.sort(key = lambda r : (r[5], r[7], r[8], r[0], r[2], r[3], r))
         

@@ -119,9 +119,9 @@ def graph_dp(graph, left_intervals, right_intervals):
     # do dynamic programming
     for i in topological_order(graph):
         if i < 2 * len(left_intervals):
-            contig, contig_b, contig_e, flank_b, flank_e = left_intervals[i // 2]
+            contig, contig_b, contig_e, flank_b, flank_e, rev = left_intervals[i // 2]
         else:
-            contig, contig_b, contig_e, flank_b, flank_e = right_intervals[(i - 2 * len(left_intervals)) // 2]
+            contig, contig_b, contig_e, flank_b, flank_e, rev = right_intervals[(i - 2 * len(left_intervals)) // 2]
         
         total_len = contig_e - contig_b + flank_e - flank_b
         
@@ -136,7 +136,7 @@ def graph_dp(graph, left_intervals, right_intervals):
     opt_index = None
     # check for opt on forward right intervals
     for i in range(len(right_intervals)):
-        contig, contig_b, contig_e, flank_b, flank_e = right_intervals[i]
+        contig, contig_b, contig_e, flank_b, flank_e, rev = right_intervals[i]
         interval_value = contig_e - contig_b + flank_e - flank_b
 #        print("forward", i, 2 * len(left_intervals) + 2 * i)
         for j in range(2 * len(left_intervals) + 2 * i, 2 * len(left_intervals) + 2 * (i + 1)):
@@ -176,7 +176,7 @@ def align_stats(selection, flank_len):
     contig_aligned_len = 0
     flank_aligned_len = 0
     
-    for contig, contig_b, contig_e, flank_b, flank_e in selection:
+    for contig, contig_b, contig_e, flank_b, flank_e, rev in selection:
         contig_aligned_begin = min(contig_aligned_begin, contig_b)
         contig_aligned_end = max(contig_aligned_end, contig_e)
         
@@ -204,6 +204,7 @@ if __name__ == "__main__":
         tokens = line.strip().split()
         
         target_contig = tokens[5]
+        
         target_begin = int(tokens[7])
         target_end = int(tokens[8])
         if tokens[4] == '+':
