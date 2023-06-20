@@ -16,6 +16,10 @@ import hashlib
 
 if __name__ == "__main__":
     
+    if len(sys.argv) != 4:
+        print("usage: ./extract_flanks.py ref.fasta hors.bed flank_size > flanks.fasta", file = sys.stderr)
+        sys.exit(1)
+    
     fasta = sys.argv[1]
     bed = sys.argv[2]
     flank_size = int(sys.argv[3])
