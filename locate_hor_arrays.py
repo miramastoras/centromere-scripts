@@ -35,6 +35,7 @@ def get_contig_lens(fasta):
             contig_lens[contig] = 0
         else:
             contig_lens[contig] += len(line.strip())
+    return contig_lens
 
 def parse_cigar(cigar):
     parsed = []
@@ -310,7 +311,7 @@ def paf_to_active_array(paf, min_cov):
     centromere_flank_alns = {}
     flank_lens = {}
     
-    for tokens in open(intervals):
+    for tokens in paf:
         
         target_contig = tokens[5]
         
@@ -419,7 +420,7 @@ def annotation_to_active_array(hum_as_bed, fasta, slop_distance, min_length, min
     
     chrom_regex = "C([\dXY/]+)H"
     
-    columns = ["contig" "begin", "end", "chrom_set", "strand"]
+    columns = ["contig", "begin", "end", "chrom_set", "strand"]
     
     get_chrom_set = lambda hor: ",".join("chr" + v for v in re.search(chrom_regex, hor).group(1).split("/"))
     
@@ -451,9 +452,11 @@ def annotation_to_active_array(hum_as_bed, fasta, slop_distance, min_length, min
         if contig != curr_contig:
             # flush the current intervals
             for hor in curr_intervals:
-                curr_begin, curr_end, cov = curr_intervals[hor]
+                curr_begin, curr_end, cov, left_revs, right_revs = curr_intervals[hor]
                 if curr_end - curr_begin >= min_length and cov / (curr_end - curr_begin) > min_frac:
-                    table.append([curr_contig, curr_begin, curr_end, get_chrom_set(hor)])
+                    strand = determine_strand(left_revs, right_revs)
+                    if strand is not None:
+                        table.append([curr_contig, curr_begin, curr_end, get_chrom_set(hor), '-' if strand else '+'])
             curr_intervals.clear()
             curr_contig = contig
         
@@ -480,7 +483,7 @@ def annotation_to_active_array(hum_as_bed, fasta, slop_distance, min_length, min
                 if curr_end - curr_begin >= min_length and cov / (curr_end - curr_begin) > min_frac:
                     strand = determine_strand(left_revs, right_revs)
                     if strand is not None:
-                        table.append([curr_contig, curr_begin, curr_end, get_chrom_set(hor), '-' if stand else '+'])
+                        table.append([curr_contig, curr_begin, curr_end, get_chrom_set(hor), '-' if strand else '+'])
                 left_revs = collections.deque()
                 right_revs = collections.deque()
                 left_revs.append(rev)
@@ -500,42 +503,37 @@ def annotation_to_active_array(hum_as_bed, fasta, slop_distance, min_length, min
         if curr_end - curr_begin >= min_length and cov / (curr_end - curr_begin) > min_frac:
             strand = determine_strand(left_revs, right_revs)
             if strand is not None:
-                table.append([curr_contig, curr_begin, curr_end, get_chrom_set(hor), '-' if stand else '+'])
-            
+                table.append([curr_contig, curr_begin, curr_end, get_chrom_set(hor), '-' if strand else '+'])
     
     contig_lens = get_contig_lens(fasta)
-    table = [row for row in table if row[1] >= min_flank and contig_len[row[0]] - row[2] >= min_flank]        
-    
+    table = [row for row in table if row[1] >= min_flank and contig_lens[row[0]] - row[2] >= min_flank]        
+
     
     return pd.DataFrame(table, columns = columns)
 
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--fasta", type=str, 
+    parser.add_argument("-a", "--assembly", type=str, required = True,
                         help="FASTA to look for HOR arrays in")
-    parser.add_argument("-l", "--flank_files", type=str, 
+    parser.add_argument("-f", "--flank_files", type=str, required = True,
                         help="comma separated list of reference flank FASTA files (from extract_flanks.py)")
-    parser.add_argument("-b", "--hum_as_bed", type=str, 
+    parser.add_argument("-b", "--hum_as_bed", type=str, required = True,
                         help="alpha satellite annotations from Hum-AS_HMMER")
-    parser.add_argument("-m", "--min_flank_cov", type=double, default = 0.33,
+    parser.add_argument("-m", "--min_flank_cov", type=float, default = 0.33,
                         help="minimum proportion of mapped flanks to identify an array from flank input")
     parser.add_argument("-d", "--merge_dist", type=int, default = 20000,
                         help="max distance to merge arrays identified from annotation input")
-    parser.add_argument("-l", "--min_length", type=int, default = 10000,
+    parser.add_argument("-l", "--min_length", type=int, default = 25000,
                         help="minimum length to identify an array from annotation input")
     parser.add_argument("-c", "--min_anno_cov", type=float, default = 0.33,
                         help="minimum proportion live satellite to identify an array from annotation input")
-    parser.add_argument("-c", "--min_anno_flank", type=float, default = 0.33,
+    parser.add_argument("-s", "--min_anno_shoulder", type=float, default = 5000,
                         help="minimum distance from array to ends of contig to identify array from annotation input")
-    parser.add_argument("-s", "--strand_window", type=float, default = 0.33,
+    parser.add_argument("-w", "--strand_window", type=int, default = 50,
                         help="determine strand of annotation-derived arrays with this many monomers on each end")
     
     args = parser.parse_args()
-
-    print(f"identifying HOR arrays from Hum-AS_HMMER annotations", file = sys.stderr)
-    anno_active_arrays = annotation_to_active_array(args.hum_as_bed, args.merge_dist, args.min_length, 
-                                                    args.min_anno_cov, args.min_anno_flank, args.strand_window)
         
     flank_active_array_tables = []
     
@@ -543,13 +541,23 @@ if __name__ == "__main__":
         
         print(f"mapping HOR flanks from {flank_file}", file = sys.stderr)
         
+        # TODO: this is wasteful cruft, i could now run without the -a and directly use the paf
         sam_file = tmp_file_name("sam")
-        subprocess.check_call(f"winnowmap -x asm20 -a {args.fasta} {flank_file} > {sam_file}", shell = True)
+        subprocess.check_call(f"winnowmap -x asm20 -a {args.assembly} {flank_file} > {sam_file}", shell = True)
 
         print(f"identifying HOR arrays from mapped flanks", file = sys.stderr)
         paf = get_paf(sam_file)
         
         flank_active_array_tables.append(paf_to_active_array(paf, args.min_flank_cov))
+    
+    
+    print(f"identifying HOR arrays from Hum-AS_HMMER annotations", file = sys.stderr)
+    anno_active_arrays = annotation_to_active_array(args.hum_as_bed, args.assembly, args.merge_dist, args.min_length, 
+                                                    args.min_anno_cov, args.min_anno_shoulder, args.strand_window)
+    
+    
+    
+    print(f"integrating HOR evidence", file = sys.stderr)
     
     contig_to_table_row = collections.defaultdict(list)
     for i in range(len(flank_active_array_tables)):
@@ -558,13 +566,13 @@ if __name__ == "__main__":
             contig_to_table_row[table.flank_contig.values[j]].append((i, j))
     
     for j in range(len(anno_active_arrays)):
-        contig_to_table_row[anno_active_arrays.contig.values[j]].append(len(flank_active_array_tables), j)
+        contig_to_table_row[anno_active_arrays.contig.values[j]].append((len(flank_active_array_tables), j))
 
 
     for contig in contig_to_table_row:
         anno_row = -1
         flank_rows = []
-        for idx, row in contig_to_table_row:
+        for idx, row in contig_to_table_row[contig]:
             if idx < len(flank_active_array_tables):
                 flank_rows.append((idx, row))
             else:
@@ -590,16 +598,17 @@ if __name__ == "__main__":
             if len(chrom_set) == 1 and max_begin < min_end and strand is not None:
                 # there is one unambiguous chromosome assignment and strand across all data types
                 chrom = next(iter(chrom_set))
+                #print("chrom {} array found on {} from integrated input".format(chrom, contig), file = sys.stderr)
                 print("\t".join(str(v) for v in [contig, max_begin, min_end, chrom, 1, strand]))
             
         elif len(flank_rows) != 0:
             # we have only flank derived HOR arrays on this contig
             chrom = flank_active_array_tables[flank_rows[0][0]].centro_chrom.values[flank_rows[0][1]]
-            max_begin = flank_active_array_tables[flank_rows[0][0]].begin.values[flank_rows[0][1]]
-            min_end = flank_active_array_tables[flank_rows[0][0]].end.values[flank_rows[0][1]]
+            max_begin = flank_active_array_tables[flank_rows[0][0]].centro_begin.values[flank_rows[0][1]]
+            min_end = flank_active_array_tables[flank_rows[0][0]].centro_end.values[flank_rows[0][1]]
             is_reverse = flank_active_array_tables[flank_rows[0][0]].is_reverse.values[flank_rows[0][1]]
             
-            for i in range(1, len(flank_row)):
+            for i in range(1, len(flank_rows)):
                 flank_idx, flank_row = flank_rows[i]
                 if flank_active_array_tables[flank_idx].centro_chrom.values[flank_row] != chrom:
                     chrom = None
@@ -608,9 +617,11 @@ if __name__ == "__main__":
                 if flank_active_array_tables[flank_idx].is_reverse.values[flank_row] != is_reverse:
                     is_reverse = None
             
-            if chrom is not None and is_reverse is not None and max_begin < max_end:
+            
+            if chrom is not None and is_reverse is not None and max_begin < min_end:
                 # the flank mappings are consistent
-                print("\t".join(str(v) for v in [contig, begin, end, chrom, 1, '-' if is_reverse else '+']))
+                #print("chrom {} array found on {} from flank input".format(chrom, contig), file = sys.stderr)
+                print("\t".join(str(v) for v in [contig, max_begin, min_end, chrom, 1, '-' if is_reverse else '+']))
             
         else:
             # we have only annotation derived HOR arrays on this contig
@@ -618,14 +629,15 @@ if __name__ == "__main__":
             if len(chrom_set) != 1:
                 # this is a cross-chromosome family and we can't disambiguate it with the flanks
                 continue
-            chrom = chrom[0]
+            chrom = chrom_set[0]
             begin = anno_active_arrays.begin.values[anno_row]
             end = anno_active_arrays.end.values[anno_row]
             strand = anno_active_arrays.strand.values[anno_row]
+            #print("chrom {} array found on {} from annotation input".format(chrom, contig), file = sys.stderr)
             print("\t".join(str(v) for v in [contig, begin, end, chrom, 1, strand]))
             
 
 
 
-for tmp_file in tmp_files:
-    os.remove(tmp_file)
+    for tmp_file in tmp_files:
+        os.remove(tmp_file)
