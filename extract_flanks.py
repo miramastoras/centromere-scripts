@@ -48,8 +48,11 @@ if __name__ == "__main__":
         chrom = tokens[0]
         b = int(tokens[1]) + 1
         e = int(tokens[2])
-        region_by_endpoint[(chrom, b - 1)] = (b, e)
-        region_by_endpoint[(chrom, e + 1)] = (b, e)
+        strand = "."
+        if len(tokens) >= 6:
+            strand = tokens[5]
+        region_by_endpoint[(chrom, b - 1)] = (b, e, strand)
+        region_by_endpoint[(chrom, e + 1)] = (b, e, strand)
                         
         print("{}:{}-{}".format(chrom, max(1, b - flank_size), b - 1), file = region_file)
         print("{}:{}-{}".format(chrom, e + 1, min(e + flank_size, chrom_length[chrom])), file = region_file)                      
@@ -79,12 +82,12 @@ if __name__ == "__main__":
             e = int(m.group(3))
             
             if (chrom, b) in region_by_endpoint:
-                region_b, region_e = region_by_endpoint[(chrom, b)]
+                region_b, region_e, strand = region_by_endpoint[(chrom, b)]
                 direction = "R"
             else:
-                region_b, region_e = region_by_endpoint[(chrom, e)]
+                region_b, region_e, strand = region_by_endpoint[(chrom, e)]
                 direction = "L"
-            line += "({}:{}-{}{})".format(chrom, region_b, region_e, direction)
+            line += "({}{}:{}-{}{})".format(chrom, strand, region_b, region_e, direction)
             
         print(line)
         

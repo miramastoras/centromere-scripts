@@ -115,6 +115,8 @@ def plot_cigar(drawing, cigar, ref_begin, ref_end, query_begin, query_end, long_
     curr_ref_pos = 0
     curr_query_pos = 0
     
+    d_max = -1
+    i_max = -1
     for op, op_len in cigar:
         
         if op in "MX=":
@@ -123,9 +125,11 @@ def plot_cigar(drawing, cigar, ref_begin, ref_end, query_begin, query_end, long_
         elif op == "D":
             next_ref_pos = curr_ref_pos
             next_query_pos = curr_query_pos + op_len
+            d_max = max(op_len, d_max)
         elif op in "IHS":
             next_ref_pos = curr_ref_pos + op_len
             next_query_pos = curr_query_pos
+            i_max = max(op_len, i_max)
         else:
             assert(False)
             
@@ -138,20 +142,21 @@ def plot_cigar(drawing, cigar, ref_begin, ref_end, query_begin, query_end, long_
         else:
             color = mismatch_color
         
-        # only draw inside the 
-        if ((curr_ref_pos >= ref_begin and curr_ref_pos < ref_end and curr_query_pos >= query_begin and curr_query_pos < query_end) or
-            (next_ref_pos >= ref_begin and next_ref_pos < ref_end and next_query_pos >= query_begin and next_query_pos < query_end)):
+        # # only draw inside the 
+        # if ((curr_ref_pos >= ref_begin and curr_ref_pos < ref_end and curr_query_pos >= query_begin and curr_query_pos < query_end) or
+        #     (next_ref_pos >= ref_begin and next_ref_pos < ref_end and next_query_pos >= query_begin and next_query_pos < query_end)):
         
-            drawing.add(drawing.line((x_begin, y_begin), (x_end, y_end), 
-                                     stroke = color, stroke_width = line_width))
-            
-            num_segments += 1
+        drawing.add(drawing.line((x_begin, y_begin), (x_end, y_end), 
+                                 stroke = color, stroke_width = line_width))
+        
+        num_segments += 1
             
         curr_ref_pos = next_ref_pos
         curr_query_pos = next_query_pos
         
         
     print(f"added {num_segments} alignment segments", file = sys.stderr)
+    print(f"max deletion length {d_max}, max insertion length {i_max}", file = sys.stderr)
     
     return num_segments
 
@@ -300,7 +305,7 @@ if __name__ == "__main__":
     # ref or query according to the cigar operations
     ref_fasta = sys.argv[1]
     query_fasta = sys.argv[2]
-    alignments = sys.argv[3] # leave ampty to only plot MEMs
+    alignments = sys.argv[3] # leave empty to only plot MEMs
     out = sys.argv[4]
     
     # i'm also repurposing this to plot centrolign anchoring
@@ -311,20 +316,20 @@ if __name__ == "__main__":
     ref = parse_fasta(ref_fasta)
     query = parse_fasta(query_fasta)
     
-    min_length = 500
+    min_length = 700
     
-    add_ticks = False
+    add_ticks = True
     
     seq1_begin = 0
     seq1_end = len(ref)
     seq2_begin = 0
     seq2_end = len(query)
     
-    long_side = 4000
+    long_side = 3000
 #    mem_line_width = 1
 #    mum_line_width = 2
-    mem_line_width = .025
-    mum_line_width = .05
+    mem_line_width = 1.75
+    mum_line_width = 2.1
     alignment_line_width = 1.5
     connector_width = 0.5
     
@@ -358,7 +363,7 @@ if __name__ == "__main__":
     print("plotting MUMs", file = sys.stderr)
     
     num_lines += plot_lines(drawing, mums, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
-                            mum_line_width, "lightcoral")
+                            mum_line_width, "crimson")
     
     alignment_colors = [("darkturquoise", "springgreen"), ("mediumpurple", "violet"),
                         ("peru", "sandybrown"), ("lightslategray", "lightsteelblue"), ("goldenrod", "gold")]
