@@ -571,7 +571,7 @@ if __name__ == "__main__":
                         help="max distance to merge arrays identified from annotation input")
     parser.add_argument("-l", "--min_length", type=int, default = 25000,
                         help="minimum length to identify an array from annotation input")
-    parser.add_argument("-c", "--min_anno_cov", type=float, default = 0.33,
+    parser.add_argument("-c", "--min_anno_cov", type=float, default = 0.25,
                         help="minimum proportion live satellite to identify an array from annotation input")
     parser.add_argument("-s", "--min_anno_shoulder", type=float, default = 20000,
                         help="minimum distance from array to ends of contig to identify array from annotation input")
