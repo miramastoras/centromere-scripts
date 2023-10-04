@@ -11,13 +11,13 @@ import os
 import re
 
 def map_to_samples(fps):
-    suff_regex = "([a-zA-Z0-9\.]+)_([a-zA-Z0-9\.]+).txt$"
+    suff_regex = "([a-zA-Z0-9]+.[0-9])_([a-zA-Z0-9]+.[0-9]).txt$"
 
     sample_map = {}
     for fp in fps:
         m = re.search(suff_regex, fp)
         assert(m is not None)
-        key = tuple(sorted([m.group(1), m.group(2)]))
+        key = tuple([m.group(1), m.group(2)])
         sample_map[key] = fp
     
     return sample_map
@@ -32,8 +32,8 @@ def reverse_cigar(parsed):
     for i in range(len(parsed)):
         if parsed[i][0] == "I":
             parsed[i] = ("D", parsed[i][1])
-    if parsed[i][0] == "D":
-        parsed[i] = ("I", parsed[i][1])
+        elif parsed[i][0] == "D":
+            parsed[i] = ("I", parsed[i][1])
 
 def cigar_to_positions(cigar):
     
@@ -82,13 +82,16 @@ if __name__ == "__main__":
     
     header = ["sample1", "sample2", "jaccard", "num_pos_ind", "num_pos_dir"]
     print("\t".join(header))
-    for pair in samples_to_induced:
+    for pair in sorted(samples_to_induced, key = lambda k : sorted(k)):
         
         induced_cigar = parse_cigar(open(samples_to_induced[pair]).read())
 
         if pair not in samples_to_direct:
             rev_pair = (pair[1], pair[0])
-            direct_cigar = reverse_cigar(parse_cigar(open(samples_to_direct[rev_pair]).open()))
+            assert(rev_pair in samples_to_direct)
+            direct_cigar = parse_cigar(open(samples_to_direct[rev_pair]).read())
+            _, r, q = cigar_to_positions(direct_cigar)
+            reverse_cigar(direct_cigar)
             
         else:
             direct_cigar = parse_cigar(open(samples_to_direct[pair]).read())
