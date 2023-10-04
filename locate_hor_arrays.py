@@ -556,6 +556,20 @@ def get_inferred_array(flank_active_array_table, row):
         return (flank_active_array_table.left_contig_end.values[row],
                 flank_active_array_table.right_contig_begin.values[row])
 
+def get_centro_strands(bed):
+    
+    strands = {}
+    
+    for line in open(bed):
+        tokens = line.strip().split()
+        assert(len(tokens) >= 6)
+        assert(tokens[5] == '-' or tokens[5] == '+')
+        rev = tokens[5] == '-'
+        strands[tokens[0]] = rev
+    
+    return strands
+    
+
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
@@ -565,13 +579,15 @@ if __name__ == "__main__":
                         help="comma separated list of reference flank FASTA files (from extract_flanks.py)")
     parser.add_argument("-b", "--hum_as_bed", type=str, required = True,
                         help="alpha satellite annotations from Hum-AS_HMMER")
-    parser.add_argument("-m", "--min_flank_cov", type=float, default = 0.33,
+    parser.add_argument("-H", "--hor_strand_bed", type=str, required = True,
+                        help="BED file that gives centromere strand by chromosome")
+    parser.add_argument("-m", "--min_flank_cov", type=float, default = 0.25,
                         help="minimum proportion of mapped flanks to identify an array from flank input")
     parser.add_argument("-d", "--merge_dist", type=int, default = 20000,
                         help="max distance to merge arrays identified from annotation input")
     parser.add_argument("-l", "--min_length", type=int, default = 25000,
                         help="minimum length to identify an array from annotation input")
-    parser.add_argument("-c", "--min_anno_cov", type=float, default = 0.25,
+    parser.add_argument("-c", "--min_anno_cov", type=float, default = 0.33,
                         help="minimum proportion live satellite to identify an array from annotation input")
     parser.add_argument("-s", "--min_anno_shoulder", type=float, default = 20000,
                         help="minimum distance from array to ends of contig to identify array from annotation input")
@@ -586,12 +602,17 @@ if __name__ == "__main__":
     
     debug = False
     
+    centro_strands = get_centro_strands(args.hor_strand_bed)
+    
+    if debug:
+        print(centro_strands, file = sys.stderr)
+    
     for flank_file in args.flank_files.split(","):
         
         print(f"mapping HOR flanks from {flank_file}", file = sys.stderr)
         
         # TODO: this is wasteful cruft, i could now run without the -a and directly use the paf
-        # sam_file = "hg00438.sam"
+        # sam_file = "hg002.sam"
         sam_file = tmp_file_name("sam")
         subprocess.check_call(f"winnowmap -x asm20 -a {args.assembly} {flank_file} > {sam_file}", shell = True)
 
@@ -748,7 +769,8 @@ if __name__ == "__main__":
             chroms_found.add(chrom)
             begin = anno_active_arrays.begin.values[anno_row]
             end = anno_active_arrays.end.values[anno_row]
-            strand = anno_active_arrays.strand.values[anno_row]
+            strand_rev = anno_active_arrays.strand.values[anno_row]
+            strand = '+' if (strand_rev == centro_strands[chrom]) else '-'
             #print("chrom {} array found on {} from annotation input".format(chrom, contig), file = sys.stderr)
             print("\t".join(str(v) for v in [contig, begin, end, chrom, 2, strand]))
     
@@ -773,12 +795,14 @@ if __name__ == "__main__":
         chroms_found.add(chrom)
         begin = anno_active_arrays.begin.values[anno_row]
         end = anno_active_arrays.end.values[anno_row]
-        strand = anno_active_arrays.strand.values[anno_row]
+        strand_rev = anno_active_arrays.strand.values[anno_row]
+        strand = '+' if (strand_rev == centro_strands[chrom]) else '-'
         #print("chrom {} array found on {} from annotation input".format(chrom, contig), file = sys.stderr)
         print("\t".join(str(v) for v in [contig, begin, end, chrom, 2, strand]))
     
     print(f"filtered out arrays on {num_filtered} contigs: {num_inconsistent} inconsistent chromosome, {num_nonoverlapping} non-overlapping, {num_ambigous_strand} ambiguous strand, {num_incomplete} incomplete chromosome assignment", file = sys.stderr)
-    print("filtering may have affected: {}".format(", ".join(sorted(chroms_filtered))), file = sys.stderr)
+    if num_filtered != 0:
+        print("filtering may have affected: {}".format(", ".join(sorted(chroms_filtered))), file = sys.stderr)
 
     for tmp_file in tmp_files:
         os.remove(tmp_file)

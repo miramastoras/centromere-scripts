@@ -73,6 +73,7 @@ do
         -a "$ASSEMBLY" \
         -f "$EXTRACTDIR"/new_flanks_unique_200000.fasta \
         -b "$HUMAS_BED" \
+        -H "$EXTRACTDIR"/new_active_array_unique_shoulder.bed\
         > "$OUTDIR"/hor_arrays."$PARENT".bed
     
     # clean up the files
