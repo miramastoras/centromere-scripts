@@ -65,6 +65,10 @@ def cigar_to_positions(cigar):
 if __name__ == "__main__":
     
     
+    if len(sys.argv) != 3:
+        print("usage:\npairwise_consistency.py induced_prefix direct_prefix > consistency.txt")
+        exit()
+    
     induced_prefix = os.path.abspath(sys.argv[1])
     direct_prefix = os.path.abspath(sys.argv[2])
     
@@ -80,7 +84,7 @@ if __name__ == "__main__":
     samples_to_induced = map_to_samples(induced_files)
     samples_to_direct = map_to_samples(direct_files)
     
-    header = ["sample1", "sample2", "jaccard", "num_pos_ind", "num_pos_dir"]
+    header = ["sample1", "sample2", "intersection", "union", "aligned_intersection", "aligned_union", "jaccard", "aligned_jaccard", "num_pos_ind", "num_pos_dir"]
     print("\t".join(header))
     for pair in sorted(samples_to_induced, key = lambda k : sorted(k)):
         
@@ -90,7 +94,6 @@ if __name__ == "__main__":
             rev_pair = (pair[1], pair[0])
             assert(rev_pair in samples_to_direct)
             direct_cigar = parse_cigar(open(samples_to_direct[rev_pair]).read())
-            _, r, q = cigar_to_positions(direct_cigar)
             reverse_cigar(direct_cigar)
             
         else:
@@ -105,8 +108,21 @@ if __name__ == "__main__":
         assert(rl1 == rl2)
         assert(ql1 == ql2)
         
-        jacc = len(induced_positions.intersection(direct_positions)) / len(induced_positions.union(direct_positions))
+        induced_aligned_positions = set(p for p in induced_positions if p[0] != -1 and p[1] != -1)
+        direct_aligned_positions = set(p for p in direct_positions if p[0] != -1 and p[1] != -1)
         
-        row = [pair[0], pair[1], jacc, len(induced_positions), len(direct_positions)]
+        inter = len(induced_positions.intersection(direct_positions))
+        union = len(induced_positions.union(direct_positions))
+        inter_aligned = len(induced_aligned_positions.intersection(direct_aligned_positions))
+        union_aligned = len(induced_aligned_positions.union(direct_aligned_positions))
+        
+        jacc = inter / union
+        if union_aligned == 0:
+            jacc_aln = "NA"
+        else:
+            jacc_aln = inter_aligned / union_aligned
+        
+        
+        row = [pair[0], pair[1], inter, union, inter_aligned, union_aligned, jacc, jacc_aln, len(induced_positions), len(direct_positions)]
         print("\t".join(str(v) for v in row))
     
