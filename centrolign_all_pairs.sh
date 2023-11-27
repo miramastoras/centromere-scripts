@@ -32,11 +32,12 @@ date
 hostname
 pwd
 
-CENTROLIGN=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/centrolign-94eccde
+#CENTROLIGN=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/centrolign-94eccde
+CENTROLIGN=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/centrolign-f3438dd
 CHROMDIR=/private/groups/patenlab/jeizenga/centromere/chr12/
 FASTADIR=$CHROMDIR/fastas/
 WORKDIR=$CHROMDIR/work/
-OUTDIR=$CHROMDIR/direct_pairwise/
+OUTDIR=$CHROMDIR/direct_pairwise_20231127/
 
 mkdir -p $OUTDIR
 mkdir -p $WORKDIR
