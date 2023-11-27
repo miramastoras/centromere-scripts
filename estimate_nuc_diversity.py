@@ -46,6 +46,7 @@ if __name__ == "__main__":
 
     
     column_count = None
+    alleles = None
     
     with open(sys.argv[1]) as f:
         
@@ -55,25 +56,44 @@ if __name__ == "__main__":
         # parse the data
         for line in f:
             tokens = line.strip().split()
-            # skip the sample identifier
+            # init the 
             if column_count is None:
+                # records of (allele1 count, allele2 count)
                 column_count = [[0, 0] for i in range(len(tokens) - 1)]
-                
+                alleles = [[None, None] for i in range(len(tokens) - 1)]
+            # skip the sample identifier
             for i in range(1, len(tokens)):
                 if tokens[i] != "?":
                     # this SNP is observed
-                    column_count[i - 1][0] += 1
-                    if tokens[i] == "1":
-                        # this SNP has the "alt"
+                    
+                    # make sure we know the alleles
+                    if alleles[i - 1][0] is None:
+                        alleles[i - 1][0] = tokens[i]
+                    elif alleles[i - 1][1] is None and tokens[i] != alleles[i - 1][0]:
+                        alleles[i - 1][1] = tokens[i]
+                        
+                    # add count to the allele
+                    if tokens[i] == alleles[i - 1][0]:
+                        column_count[i - 1][0] += 1
+                    else:
                         column_count[i - 1][1] += 1
                         
     
-    num_differences = 0
-    for num_seqs, num_alt_allele in column_count:
-        num_differences += num_alt_allele * (num_seqs - num_alt_allele)
-        
+    transitions = {("C", "T"), ("T", "C"), ("A", "G"), ("G", "A")}
+    
+    num_transitions = 0
+    num_transversions = 0
+    for i in range(len(column_count)):
+        count1, count2 = column_count[i]
+        num_diffs = count1 * count2
+        if tuple(alleles[i]) in transitions:
+            num_transitions += num_diffs
+        else:
+            num_transversions += num_diffs
+                    
     print("total aligned pairs: {}".format(total_aligned))
-    print("total nucleotide differences: {}".format(num_differences))
-    print("nucleotide diversity: {}".format(float(num_differences) / total_aligned))
+    print("total nucleotide differences: {}".format(num_transitions + num_transversions))
+    print("nucleotide diversity: {}".format(float(num_transitions + num_transversions) / total_aligned))
+    print("Ti/Tv ratio: {}".format(float(num_transitions) / num_transversions))
     
         
