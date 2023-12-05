@@ -36,7 +36,7 @@ CENTROLIGN=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/centrolign-
 UNIALIGNER=/private/groups/patenlab/jeizenga/GitHub/unialigner/tandem_aligner/build/bin/tandem_aligner
 SIMDIR=/private/groups/patenlab/jeizenga/centromere/simulation/
 WORKDIR=$SIMDIR/work/
-OUTDIR=$SIMDIR/alignments_20231127/
+OUTDIR=$SIMDIR/alignments_20231201/
 
 mkdir -p $OUTDIR
 mkdir -p $WORKDIR
@@ -46,23 +46,23 @@ SIM=$(awk "NR==$SLURM_ARRAY_TASK_ID" "$SIMDIR"/simulations.txt)
 echo "simulation:" $SIMDIR/$SIM
 echo "out:" $OUTDIR
 
-FASTA1=${SIMDIR}/${SIM}seq1.fasta
-FASTA2=${SIMDIR}/${SIM}seq2.fasta
+FASTA1=${SIMDIR}/${SIM}_seq1.fasta
+FASTA2=${SIMDIR}/${SIM}_seq2.fasta
 
 echo "fasta 1:" $FASTA1
 echo "fasta 2:" $FASTA2
 
 echo "aligning with centrolign"
-TEMP_FASTA=${WORKDIR}/${SIM}joined.fa
+TEMP_FASTA=${WORKDIR}/${SIM}_joined.fa
 mkdir -p `dirname $TEMP_FASTA`
 cat $FASTA1 $FASTA2 > $TEMP_FASTA
-CENTROLIGN_OUTFILE=$OUTDIR/"$SIM"aln_centrolign.txt
+CENTROLIGN_OUTFILE=$OUTDIR/"$SIM"_aln_centrolign.txt
 mkdir -p `dirname $CENTROLIGN_OUTFILE`
 ${CENTROLIGN} -v 3 --skip-calibration $TEMP_FASTA > $CENTROLIGN_OUTFILE
 rm $TEMP_FASTA
 
 echo "aligning with unaligner"
-UNIALIGNER_OUTFILE=$OUTDIR/"$SIM"aln_unaligner.txt
+UNIALIGNER_OUTFILE=$OUTDIR/"$SIM"_aln_unialigner.txt
 mkdir -p `dirname $UNIALIGNER_OUTFILE`
 UNIALIGNER_TEMP_OUTDIR=$WORKDIR/tmp_out_"$SLURM_ARRAY_TASK_ID"
 ${UNIALIGNER} --first $FASTA1 --second $FASTA2 -o $UNIALIGNER_TEMP_OUTDIR
