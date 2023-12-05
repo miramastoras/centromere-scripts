@@ -16,6 +16,20 @@ def parse_cigar(cigar):
         parsed.append((m.group(2), int(m.group(1))))
     return parsed
 
+def to_simple_cigar(cigar):
+    simple = []
+    for m in re.finditer("(\d+)([HSNMIDX=])", cigar):
+        op = m.group(2)
+        l = int(m.group(1))
+        if op == "=" or op == "X":
+            op = "M"
+        if len(simple) != 0 and op == simple[-1][1]:
+            simple[-1][0] += l
+        else:
+            simple.append([l, op])
+    return "".join(str(l) + op for l, op in simple)
+        
+
 def count_aligned(cigar):
     aligned = 0
     for op, l in cigar:
@@ -27,7 +41,7 @@ def count_aligned(cigar):
 if __name__ == "__main__":
     
     if len(sys.argv) != 3:
-        print("usage: estimate_nuc_diveristy.py snp_mat.tsv pairwise_aln_prefix")
+        print("usage: estimate_nuc_diversity.py snp_mat.tsv pairwise_aln_prefix")
         exit(1)
         
 
