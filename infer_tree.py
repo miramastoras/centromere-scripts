@@ -17,7 +17,7 @@ def parse_cigar(cigar):
         parsed.append((m.group(2), int(m.group(1))))
     return parsed
 
-def cigar_to_dist(cigar):
+def cigar_to_dist(cigar, min_scale):
     
     query_len = 0
     ref_len = 0
@@ -35,22 +35,38 @@ def cigar_to_dist(cigar):
         else:
             assert(False)
     
-    return 1.0 - (2.0 * matches) / (ref_len + query_len)
+    if min_scale:
+        return 1.0 - matches / min(ref_len, query_len)
+    else:
+        return 1.0 - (2.0 * matches) / (ref_len + query_len)
 
 if __name__ == "__main__":
     
+    if len(sys.argv) not in [2, 3]:
+        print("usage: ./infer_tree.py aln_dir [use_min_scale]", file = sys.stderr)
+        exit(1)
+    
     aln_dir = sys.argv[1]
+    use_min_scale = False
+    if len(sys.argv) == 3:
+        use_min_scale = bool(int(sys.argv[2]))
     
     mat = {}
     
-    for fp in os.listdir(aln_dir):
+    fps = os.listdir(aln_dir)
+    for i in range(len(fps)):
+        if (i + 1) % 100 == 0:
+            print("processed {} of {} files".format(i + 1, len(fps)), file = sys.stderr)
+        fp = fps[i]
         with open(os.path.join(aln_dir, fp)) as f:
             cigar = parse_cigar(f.read().strip())
-        m = re.match("([0-9a-zA-Z]+)_([0-9a-zA-Z]+)_cigar.txt", fp)
+        if "aln" not in fp and "cigar" not in fp:
+            continue
+        m = re.search("([0-9a-zA-Z.]+)_([0-9a-zA-Z.]+)(_cigar)?.txt", fp)
         assert(m is not None)
         samp1 = m.group(1)
         samp2 = m.group(2)
-        dist = cigar_to_dist(cigar)
+        dist = cigar_to_dist(cigar, use_min_scale)
         mat[(samp1, samp2)] = dist
         mat[(samp2, samp1)] = dist
         
