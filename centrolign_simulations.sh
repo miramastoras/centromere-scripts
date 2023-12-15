@@ -22,7 +22,7 @@
 # Processors per task:
 #SBATCH --cpus-per-task=1
 #
-#SBATCH --array=1-20
+#SBATCH --array=1-1
 #SBATCH --output=array_job_%A_task_%a.log
 #
 # Wall clock limit in hrs:min:sec:
@@ -32,61 +32,75 @@ date
 hostname
 pwd
 
-CENTROLIGN=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/centrolign-f3438dd
-UNIALIGNER=/private/groups/patenlab/jeizenga/GitHub/unialigner/tandem_aligner/build/bin/tandem_aligner
-SIMDIR=/private/groups/patenlab/jeizenga/centromere/simulation/
-WORKDIR=$SIMDIR/work/
-OUTDIR=$SIMDIR/alignments_20231201/
+# list cases in $SIMDIR/cases.txt
 
-mkdir -p $OUTDIR
+SIMDIR=/private/groups/patenlab/jeizenga/centromere/simulation/pair_chrX_sim_cases_20231214
+CASE=$(awk "NR==$SLURM_ARRAY_TASK_ID" "$SIMDIR"/cases.txt)
+CASEDIR=$SIMDIR/$CASE
+WORKDIR=$SIMDIR/work
+
+CENTROLIGN_OUTFILE=$CASEDIR/aln_centrolign.txt
+UNIALIGNER_OUTFILE=$CASEDIR/aln_unialigner.txt
+WFA_OUTFILE=$CASEDIR/aln_wfa.txt
+
+CENTROLIGN_DIR=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/
+SCRIPTS_DIR=/private/groups/patenlab/jeizenga/GitHub/centromere-scripts/
+
+CENTROLIGN=$CENTROLIGN_DIR/centrolign
+TRUTH_COMPARE=$CENTROLIGN_DIR//compare_truth_aln
+UNIALIGNER=/private/groups/patenlab/jeizenga/GitHub/unialigner/tandem_aligner/build/bin/tandem_aligner
+TO_RAW_SEQ=$SCRIPTS_DIR/fasta_to_raw_seq.py
+ANALYZE_CASE=$SCRIPTS_DIR/analyze_pair_case.py
+WFA=/private/groups/patenlab/jeizenga/GitHub/WFA2-lib/bin/align_benchmark
+
+# scores: M,X,O1,E1,O2,E2
+# heuristic: min distance, max distance from lead, reduction interval
+WFA_PARAMS="-a gap-affine2p-wfa --affine2p-penalties -20,80,100,30,5000,1 --wfa-heuristic wfa-adaptive --wfa-heuristic-parameters 1000,20000,50 --wfa-memory ultralow --wfa-span global"
+
 mkdir -p $WORKDIR
 cd $WORKDIR
 
-SIM=$(awk "NR==$SLURM_ARRAY_TASK_ID" "$SIMDIR"/simulations.txt)
-echo "simulation:" $SIMDIR/$SIM
-echo "out:" $OUTDIR
+echo "simulation:" $CASEDIR
 
-FASTA1=${SIMDIR}/${SIM}_seq1.fasta
-FASTA2=${SIMDIR}/${SIM}_seq2.fasta
+FASTA1=${CASEDIR}/sim_seq1.fasta
+FASTA2=${CASEDIR}/sim_seq2.fasta
 
 echo "fasta 1:" $FASTA1
 echo "fasta 2:" $FASTA2
 
 echo "aligning with centrolign"
-TEMP_FASTA=${WORKDIR}/${SIM}_joined.fa
+TEMP_FASTA=${WORKDIR}/sim_joined_"$SLURM_ARRAY_TASK_ID".fa
 mkdir -p `dirname $TEMP_FASTA`
 cat $FASTA1 $FASTA2 > $TEMP_FASTA
-CENTROLIGN_OUTFILE=$OUTDIR/"$SIM"_aln_centrolign.txt
 mkdir -p `dirname $CENTROLIGN_OUTFILE`
-${CENTROLIGN} -v 3 --skip-calibration $TEMP_FASTA > $CENTROLIGN_OUTFILE
+/usr/bin/time -v ${CENTROLIGN} -v 3 $TEMP_FASTA > $CENTROLIGN_OUTFILE
 rm $TEMP_FASTA
 
 echo "aligning with unaligner"
-UNIALIGNER_OUTFILE=$OUTDIR/"$SIM"_aln_unialigner.txt
 mkdir -p `dirname $UNIALIGNER_OUTFILE`
 UNIALIGNER_TEMP_OUTDIR=$WORKDIR/tmp_out_"$SLURM_ARRAY_TASK_ID"
-${UNIALIGNER} --first $FASTA1 --second $FASTA2 -o $UNIALIGNER_TEMP_OUTDIR
+/usr/bin/time -v ${UNIALIGNER} --first $FASTA1 --second $FASTA2 -o $UNIALIGNER_TEMP_OUTDIR
 mv $UNIALIGNER_TEMP_OUTDIR/cigar.txt $UNIALIGNER_OUTFILE
+# delete the rest of the output
 rm -r $UNIALIGNER_TEMP_OUTDIR
 
-#contents of simulations.txt
-#gen100/sim_z120_
-#gen100/sim_z220_
-#gen100/sim_z320_
-#gen100/sim_z420_
-#gen100/sim_z520_
-#gen100/sim_z620_
-#gen100/sim_z720_
-#gen100/sim_z820_
-#gen100/sim_z920_
-#gen100/sim_z1020_
-#gen200/sim_z122_g200_
-#gen200/sim_z222_g200_
-#gen200/sim_z322_g200_
-#gen200/sim_z422_g200_
-#gen200/sim_z522_g200_
-#gen200/sim_z622_g200_
-#gen200/sim_z722_g200_
-#gen200/sim_z822_g200_
-#gen200/sim_z922_g200_
-#gen200/sim_z1022_g200_
+echo "aligning with WFA"
+RAW_SEQ_TEMP=${WORKDIR}/tmp_raw_seq_"$SLURM_ARRAY_TASK_ID".txt
+WFA_TEMP_OUT=${WORKDIR}/tmp_wfa_out_"$SLURM_ARRAY_TASK_ID".txt
+$TO_RAW_SEQ $FASTA1 > $RAW_SEQ_TEMP
+$TO_RAW_SEQ $FASTA2 >> $RAW_SEQ_TEMP
+# limit memory to 32 gB and runtime to 30 min, but don't consider it a failure if we don't get it
+true || timeout -v 30m ulimit -m 33554432 $WFA $WFA_PARAMS -i $RAW_SEQ_TEMP -o $WFA_TEMP_OUT
+# remove the score from the output
+if [ -f $WFA_TEMP_OUT ]; then
+    cut -f 2 $WFA_TEMP_OUT > $WFA_OUTFILE
+else
+    touch $WFA_OUTFILE
+fi
+rm -f $RAW_SEQ_TEMP
+rm -f $WFA_TEMP_OUT
+
+# do this from outside the directory to get more sensible output
+cd $SIMDIR
+$ANALYZE_CASE $CASE $TRUTH_COMPARE
+
