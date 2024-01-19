@@ -748,8 +748,6 @@ if __name__ == "__main__":
                     chroms_filtered.add(chrom)
                 if max_begin >= min_end:
                     num_nonoverlapping += 1
-                if strand is None:
-                    num_ambigous_strand += 1
                 if debug:
                     print("filter flank contig {}, inconsistent chrom? {}, missing rev? {}, begin {}, end {} ".format(contig,
                                                                                                                chrom is None,

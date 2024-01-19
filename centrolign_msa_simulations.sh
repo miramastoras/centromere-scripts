@@ -22,7 +22,7 @@
 # Processors per task:
 #SBATCH --cpus-per-task=1
 #
-#SBATCH --array=1-1
+#SBATCH --array=2-30
 #SBATCH --output=array_job_%A_task_%a.log
 #
 # Wall clock limit in hrs:min:sec:
@@ -32,9 +32,12 @@ date
 hostname
 pwd
 
+CHR=X
+DATE=20231215
+
 CENTRODIR=/private/groups/patenlab/jeizenga/centromere
 SIMDIR=$CENTRODIR/simulation/
-CASEDIR=$SIMDIR/msa_chrX_sim_cases_20231205/
+CASEDIR=$SIMDIR/msa_chr"$CHR"_sim_cases_"$DATE"/
 
 CASE=$(ls $CASEDIR | sort | head -n $SLURM_ARRAY_TASK_ID | tail -n 1)
 
@@ -44,10 +47,10 @@ mkdir -p induced
 mkdir -p subprobs
 
 CENTROLIGNDIR=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/
-CENTROLIGN=$CENTROLIGNDIR/centrolign-833c9ac
-TRUTH_COMPARE=$CENTROLIGNDIR/compare_truth_aln
-TREE_COMPARE=$CENTROLIGNDIR/tree_compare
-TREE_DIST=$CENTROLIGNDIR/tree_pair_dist
+CENTROLIGN=$CENTROLIGNDIR/centrolign-429efbd
+TRUTH_COMPARE=$CENTROLIGNDIR/compare_truth_aln-429efbd
+TREE_COMPARE=$CENTROLIGNDIR/tree_compare-429efbd
+TREE_DIST=$CENTROLIGNDIR/tree_pair_dist-429efbd
 CENTRO_SCRIPTS_DIR=/private/groups/patenlab/jeizenga/GitHub/centromere-scripts/
 ANALYZE_CASE=$CENTRO_SCRIPTS_DIR/analyze_case.py
 INFER_TREE=$CENTRO_SCRIPTS_DIR/infer_tree.py

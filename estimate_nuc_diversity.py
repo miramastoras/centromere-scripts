@@ -97,17 +97,22 @@ if __name__ == "__main__":
     
     num_transitions = 0
     num_transversions = 0
+    num_transition_events = 0
+    num_transversion_events = 0
     for i in range(len(column_count)):
         count1, count2 = column_count[i]
         num_diffs = count1 * count2
         if tuple(alleles[i]) in transitions:
             num_transitions += num_diffs
+            num_transition_events += 1
         else:
             num_transversions += num_diffs
+            num_transversion_events += 1
                     
     print("total aligned pairs: {}".format(total_aligned))
     print("total nucleotide differences: {}".format(num_transitions + num_transversions))
     print("nucleotide diversity: {}".format(float(num_transitions + num_transversions) / total_aligned))
-    print("Ti/Tv ratio: {}".format(float(num_transitions) / num_transversions))
+    print("Ti/Tv ratio (differences): {}".format(float(num_transitions) / num_transversions))
+    print("Ti/Tv ratio (events): {}".format(float(num_transition_events) / num_transversion_events))
     
         

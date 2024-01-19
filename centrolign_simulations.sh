@@ -22,7 +22,7 @@
 # Processors per task:
 #SBATCH --cpus-per-task=1
 #
-#SBATCH --array=1-1
+#SBATCH --array=2-150
 #SBATCH --output=array_job_%A_task_%a.log
 #
 # Wall clock limit in hrs:min:sec:
@@ -33,8 +33,10 @@ hostname
 pwd
 
 # list cases in $SIMDIR/cases.txt
+CHR=X
+DATE=20231215
 
-SIMDIR=/private/groups/patenlab/jeizenga/centromere/simulation/pair_chrX_sim_cases_20231214
+SIMDIR=/private/groups/patenlab/jeizenga/centromere/simulation/pair_chr"$CHR"_sim_cases_"$DATE"/
 CASE=$(awk "NR==$SLURM_ARRAY_TASK_ID" "$SIMDIR"/cases.txt)
 CASEDIR=$SIMDIR/$CASE
 WORKDIR=$SIMDIR/work
@@ -46,8 +48,8 @@ WFA_OUTFILE=$CASEDIR/aln_wfa.txt
 CENTROLIGN_DIR=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/
 SCRIPTS_DIR=/private/groups/patenlab/jeizenga/GitHub/centromere-scripts/
 
-CENTROLIGN=$CENTROLIGN_DIR/centrolign
-TRUTH_COMPARE=$CENTROLIGN_DIR//compare_truth_aln
+CENTROLIGN=$CENTROLIGN_DIR/centrolign-429efbd
+TRUTH_COMPARE=$CENTROLIGN_DIR/compare_truth_aln-429efbd
 UNIALIGNER=/private/groups/patenlab/jeizenga/GitHub/unialigner/tandem_aligner/build/bin/tandem_aligner
 TO_RAW_SEQ=$SCRIPTS_DIR/fasta_to_raw_seq.py
 ANALYZE_CASE=$SCRIPTS_DIR/analyze_pair_case.py
@@ -84,21 +86,21 @@ mv $UNIALIGNER_TEMP_OUTDIR/cigar.txt $UNIALIGNER_OUTFILE
 # delete the rest of the output
 rm -r $UNIALIGNER_TEMP_OUTDIR
 
-echo "aligning with WFA"
-RAW_SEQ_TEMP=${WORKDIR}/tmp_raw_seq_"$SLURM_ARRAY_TASK_ID".txt
-WFA_TEMP_OUT=${WORKDIR}/tmp_wfa_out_"$SLURM_ARRAY_TASK_ID".txt
-$TO_RAW_SEQ $FASTA1 > $RAW_SEQ_TEMP
-$TO_RAW_SEQ $FASTA2 >> $RAW_SEQ_TEMP
-# limit memory to 32 gB and runtime to 30 min, but don't consider it a failure if we don't get it
-true || timeout -v 30m ulimit -m 33554432 $WFA $WFA_PARAMS -i $RAW_SEQ_TEMP -o $WFA_TEMP_OUT
-# remove the score from the output
-if [ -f $WFA_TEMP_OUT ]; then
-    cut -f 2 $WFA_TEMP_OUT > $WFA_OUTFILE
-else
-    touch $WFA_OUTFILE
-fi
-rm -f $RAW_SEQ_TEMP
-rm -f $WFA_TEMP_OUT
+#echo "aligning with WFA"
+#RAW_SEQ_TEMP=${WORKDIR}/tmp_raw_seq_"$SLURM_ARRAY_TASK_ID".txt
+#WFA_TEMP_OUT=${WORKDIR}/tmp_wfa_out_"$SLURM_ARRAY_TASK_ID".txt
+#$TO_RAW_SEQ $FASTA1 > $RAW_SEQ_TEMP
+#$TO_RAW_SEQ $FASTA2 >> $RAW_SEQ_TEMP
+## limit memory to 32 gB and runtime to 30 min, but don't consider it a failure if we don't get it
+#true || timeout -v 30m ulimit -m 33554432 $WFA $WFA_PARAMS -i $RAW_SEQ_TEMP -o $WFA_TEMP_OUT
+## remove the score from the output
+#if [ -f $WFA_TEMP_OUT ]; then
+#    cut -f 2 $WFA_TEMP_OUT > $WFA_OUTFILE
+#else
+#    touch $WFA_OUTFILE
+#fi
+#rm -f $RAW_SEQ_TEMP
+#rm -f $WFA_TEMP_OUT
 
 # do this from outside the directory to get more sensible output
 cd $SIMDIR

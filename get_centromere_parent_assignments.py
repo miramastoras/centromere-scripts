@@ -29,7 +29,7 @@ def get_matched_chroms(tab):
             
             if max_identity is not None and max_identity > 0.9:
                 
-                m = re.match("^(\w+)_(\d)_(\w+)_(\d)$", tab.columns[max_j])
+                m = re.match("^(\w+)_(\w+)_(\w+)_(\w+)$", tab.columns[max_j])
                 parent = m.group(3)
                 parent_hap = int(m.group(4))
                 if child is None:
