@@ -1,9 +1,9 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=jeizenga-trio-centrolign
+#SBATCH --job-name=jeizenga-pedigree-centrolign
 #
 # Partition - This is the queue it goes in:
-#SBATCH --partition=medium
+#SBATCH --partition=short
 #
 # Where to send email
 #SBATCH --mail-user=joeizeng@gmail.com
@@ -22,7 +22,7 @@
 # Processors per task:
 #SBATCH --cpus-per-task=1
 #
-#SBATCH --array=2-238
+#SBATCH --array=1-211
 #SBATCH --output=array_job_%A_task_%a.log
 #
 # Wall clock limit in hrs:min:sec:
@@ -33,7 +33,7 @@ hostname
 pwd
 
 
-PEDDIR=/private/groups/patenlab/jeizenga/centromere/washu/
+PEDDIR=/private/groups/patenlab/jeizenga/centromere/washu_noduplex/
 PAIRS=$PEDDIR/paired_alns.txt
 
 OUTDIR=$PEDDIR/alignments/
@@ -44,9 +44,9 @@ RELATIVE_ARRAY=$(awk "NR==$SLURM_ARRAY_TASK_ID" $PAIRS | cut -f 2)
 CHILD_FASTA=$PEDDIR/$CHILD_ARRAY
 RELATIVE_FASTA=$PEDDIR/$RELATIVE_ARRAY
 RELATIVE=$(echo $RELATIVE_ARRAY | grep -Eo "PAN[0-9]+")
-RELATIVE_HAP=$(echo $RELATIVE_ARRAY | grep -Eo "hap[0-9]")
+RELATIVE_HAP=$(echo $RELATIVE_ARRAY | grep -Eo "haplotype[0-9]")
 CHILD=$(echo $CHILD_ARRAY | grep -Eo "PAN[0-9]+")
-CHILD_HAP=$(echo $CHILD_ARRAY | grep -Eo "[mp]aternal")
+CHILD_HAP=$(echo $CHILD_ARRAY | grep -Eo "haplotype[0-9]")
 CHR=$(echo $CHILD_ARRAY | grep -Eo "chr[^\.]+")
 
 OUTFILE=$OUTDIR/"$CHILD"_"$CHILD_HAP"_"$RELATIVE"_"$RELATIVE_HAP"."$CHR".cigar.txt
@@ -60,7 +60,7 @@ echo "output:"
 echo $OUTFILE
 
 CENTROLIGN_DIR=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/
-CENTROLIGN=$CENTROLIGN_DIR/centrolign-cd4c9eaf
+CENTROLIGN=$CENTROLIGN_DIR/centrolign-86d3252
 
 WORKDIR=$PEDDIR/work/
 mkdir -p $WORKDIR

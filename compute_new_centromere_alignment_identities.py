@@ -42,7 +42,7 @@ def compute_identity(cigar):
 
 def parse_aln_name(filename):
     
-    match = re.search("(PAN\d+)_([mp]aternal)_(PAN\d+)_hap([12]).(chr\w+)", filename)
+    match = re.search("(PAN\d+)_haplotype([12])_(PAN\d+)_haplotype([12]).(chr\w+)", filename)
     
     return (match.group(i) for i in range(1, 6))
     
@@ -51,6 +51,7 @@ if __name__ == "__main__":
     
     if len(sys.argv) != 2:
         print("usage:\ncompute_new_centromere_alignment_identities.py aln_dir")
+        exit(1)
     
     aln_dir = sys.argv[1]
         

@@ -154,7 +154,7 @@ def plot_lines_with_count_shading(drawing, matches, seq1_begin, seq1_end, seq2_b
         val = round((1.0 - opacity) * 255)
         color = svg.rgb(val, val, val)
         
-        if val > white_cutoff:
+        if val < white_cutoff:
             for i, j, length in group: 
                 x = (i - seq1_begin) * coord_multiplier
                 y = (j - seq2_begin) * coord_multiplier
@@ -325,40 +325,87 @@ def plot_windowed_identity_cigar(drawing, cigar, ref_begin, ref_end, query_begin
         
     print("added {} lines".format(num_lines), file = sys.stderr)
 
-def plot_axis_ticks(drawing, x_axis, begin, end, long_side, coord_multiplier):
+def plot_axis_ticks(drawing, x_axis, begin, end, other_begin, other_end, long_side, coord_multiplier, do_grid = False):
     
     main_vals = [5, 10, 25]
     schedule = [main_vals[i % len(main_vals)] * (10**(i // len(main_vals))) for i in range(len(main_vals) * 8)]
     
     pixels = long_side / 75.0
     
-    seq_len = end - begin
+    seq_len = max(end - begin, other_end - other_begin)
+    
+    major_tick_width = long_side / 1000.0
+    minor_tick_width = major_tick_width / 10.0
+    subminor_tick_width = minor_tick_width / 5.0
+    major_grid_line_width = minor_tick_width * 2.0
+    major_tick_length = long_side / 500.0
+    if do_grid:
+        minor_tick_length = (other_end - other_begin) * coord_multiplier
+    else:
+        minor_tick_length = major_tick_length / 1.5
     
     optimum_num_ticks = 10
-    tick_interval = 1
-    for interval in schedule:
-        if abs(seq_len / interval - optimum_num_ticks) < abs(seq_len / tick_interval - optimum_num_ticks):
-            tick_interval = interval
-            
-    tick_begin = begin - (begin % tick_interval)
+    major_tick_interval = 1
     
-    for tick in range(tick_begin, end, tick_interval):
+    for interval in schedule:
+        if abs(seq_len / interval - optimum_num_ticks) < abs(seq_len / major_tick_interval - optimum_num_ticks):
+            major_tick_interval = interval
+            
+    minor_tick_interval = major_tick_interval // 5
+    subminor_tick_interval = minor_tick_interval // 5
+    assert(major_tick_interval % minor_tick_interval == 0)
+    assert(minor_tick_interval % subminor_tick_interval == 0)
+    
+    
+    major_tick_begin = begin - (begin % major_tick_interval)
+    subminor_tick_begin = begin - (begin % subminor_tick_interval)
+    
+    for tick in range(subminor_tick_begin, end, subminor_tick_interval):
+        
+        if tick < begin:
+            continue
+        
+        if tick == 0:
+            continue
+        
+        if x_axis:
+            y_begin = 0
+            y_end = minor_tick_length
+            x_begin = tick * coord_multiplier
+            x_end = x_begin
+        else:
+            x_begin = 0
+            x_end = minor_tick_length
+            y_begin = tick * coord_multiplier
+            y_end = y_begin
+            
+        width = subminor_tick_width
+        if tick % minor_tick_interval == 0:
+            width = minor_tick_width
+        if do_grid and tick % major_tick_interval == 0:
+            width = major_grid_line_width
+        
+        drawing.add(drawing.line((x_begin, y_begin), (x_end, y_end), 
+                                 stroke = "black", stroke_width = width))
+    
+    for tick in range(major_tick_begin, end, major_tick_interval):
         if tick < begin:
             continue
      
         if x_axis:
             y_begin = 0
-            y_end = long_side / 500.0
+            y_end = major_tick_length
             x_begin = tick * coord_multiplier
             x_end = x_begin
         else:
             x_begin = 0
-            x_end = long_side / 500.0
+            x_end = major_tick_length
             y_begin = tick * coord_multiplier
             y_end = y_begin
             
+            
         drawing.add(drawing.line((x_begin, y_begin), (x_end, y_end), 
-                                 stroke = "black", stroke_width = long_side / 1000.0))
+                                 stroke = "black", stroke_width = major_tick_width))
         
         if x_axis:
             x = x_end
@@ -368,14 +415,15 @@ def plot_axis_ticks(drawing, x_axis, begin, end, long_side, coord_multiplier):
             y = y_end
         
         drawing.add(drawing.text(str(int(tick)), insert = (x, y), style = "font-size:{}px".format(pixels)))
-        
+    
+    
 
-def plot_ticks(drawing, ref_begin, ref_end, query_begin, query_end, long_side):
+def plot_ticks(drawing, ref_begin, ref_end, query_begin, query_end, long_side, add_grid = False):
     
     coord_multiplier = float(long_side) / max(ref_end - ref_begin, query_end - query_begin)
     
-    plot_axis_ticks(drawing, False, query_begin, query_end, long_side, coord_multiplier)
-    plot_axis_ticks(drawing, True, ref_begin, ref_end, long_side, coord_multiplier)
+    plot_axis_ticks(drawing, False, query_begin, query_end, ref_begin, ref_end, long_side, coord_multiplier, add_grid)
+    plot_axis_ticks(drawing, True, ref_begin, ref_end, query_begin, query_end, long_side, coord_multiplier, add_grid)
     
     
     
@@ -429,7 +477,7 @@ def parse_anchoring(table):
     return anchors
 
 def plot_anchoring(drawing, anchors, ref_begin, ref_end, query_begin, query_end, long_side,
-                   line_width, connector_width, colors):
+                   line_width, connector_width, bond_shrinkage, colors, bond_colors):
     
     coord_multiplier = float(long_side) / max(ref_end - ref_begin, query_end - query_begin)
     num_segments = 0
@@ -440,7 +488,14 @@ def plot_anchoring(drawing, anchors, ref_begin, ref_end, query_begin, query_end,
     prev_inside = False
     prev_level = None
     for i, j, l, level in anchors:
-        color = colors[level % len(colors)]
+        local_line_width = line_width
+        local_connector_width = connector_width
+        if level >= 0:
+            color = colors[level % len(colors)]
+        else:
+            color = bond_colors[(-level - 1) % len(bond_colors)]
+            local_line_width *= bond_shrinkage
+            local_connector_width *= bond_shrinkage
         
             
         x_begin = (i - query_begin) * coord_multiplier
@@ -455,13 +510,13 @@ def plot_anchoring(drawing, anchors, ref_begin, ref_end, query_begin, query_end,
         inside = True
         if inside:
             drawing.add(drawing.line((x_begin, y_begin), (x_end, y_end), 
-                                     stroke = color, stroke_width = line_width))
+                                     stroke = color, stroke_width = local_line_width))
             
             num_segments += 1
         
         if prev_x_end is not None and (inside or prev_inside) and level == prev_level:
             drawing.add(drawing.line((prev_x_end, prev_y_end), (x_begin, y_begin), 
-                                 stroke = color, stroke_width = connector_width))
+                                 stroke = color, stroke_width = local_connector_width))
             num_segments += 1
             
         prev_x_end = x_end
@@ -520,11 +575,14 @@ if __name__ == "__main__":
     mum_line_width = 2.1
     alignment_line_width = 1.5
     connector_width = 0.75 # for connecting anchors in anchoring plot
+    bond_shrinkage = 0.5
     
     # shade matches according to their uniqueness
     use_count_shading = True
     # how steeply to shade matches (closer to 0 -> less steep)
-    count_shading_power = 1.0
+    count_shading_power = 0.5
+    
+    add_grid = True
     
     # shade the alignment acording to its % identity within a window
     do_windowed = False
@@ -557,7 +615,7 @@ if __name__ == "__main__":
     num_lines = 0
     if use_count_shading:
         num_lines += plot_lines_with_count_shading(drawing, mems, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
-                                                   mem_line_width, count_shading_power)
+                                                   mem_line_width, count_shading_power, 240)
     else:
         num_lines += plot_lines(drawing, mems, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
                                 mem_line_width, "black")
@@ -596,11 +654,13 @@ if __name__ == "__main__":
             assert(len(alignment_names) == 1)
             alignment = alignment_names[0]
             anchors = parse_anchoring(alignment)
-            anchor_colors = ["forestgreen", "darkturquoise", "mediumpurple", "peru", "goldenrod"]
+            anchor_colors = ["forestgreen", "darkturquoise", "mediumpurple", "peru", "coral"]
+            bond_colors = ["deeppink", "lawngreen", "dodgerblue", "darkkhaki", "crimson", "aqua", "red", "greenyellow", 
+                           "olivedrab", "aquamarine", "hotpink", "lightblue", "darksalmon", "midnightblue", "blueviolet"]
             num_lines += plot_anchoring(drawing, anchors, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side,
-                                        alignment_line_width, connector_width, anchor_colors)
+                                        alignment_line_width, connector_width, bond_shrinkage, anchor_colors, bond_colors)
     
     if add_ticks:
-        plot_ticks(drawing, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side)
+        plot_ticks(drawing, seq1_begin, seq1_end, seq2_begin, seq2_end, long_side, add_grid)
     
     drawing.save()

@@ -29,3 +29,4 @@ plt = (ggplot(plot_dat, aes(y = Identity, x = 1, color = Best_alignment_of_child
                axis.title.x=element_blank())
 )
 plt
+sum(best_match_val > .9)

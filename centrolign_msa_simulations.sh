@@ -3,7 +3,7 @@
 #SBATCH --job-name=jeizenga-simulated-centrolign-msa
 #
 # Partition - This is the queue it goes in:
-#SBATCH --partition=main
+#SBATCH --partition=medium
 #
 # Where to send email
 #SBATCH --mail-user=joeizeng@gmail.com
@@ -26,14 +26,14 @@
 #SBATCH --output=array_job_%A_task_%a.log
 #
 # Wall clock limit in hrs:min:sec:
-#SBATCH --time=24:00:00
+#SBATCH --time=12:00:00
 
 date
 hostname
 pwd
 
 CHR=X
-DATE=20231215
+DATE=20240308
 
 CENTRODIR=/private/groups/patenlab/jeizenga/centromere
 SIMDIR=$CENTRODIR/simulation/
@@ -47,10 +47,10 @@ mkdir -p induced
 mkdir -p subprobs
 
 CENTROLIGNDIR=/private/groups/patenlab/jeizenga/GitHub/centrolign/build/
-CENTROLIGN=$CENTROLIGNDIR/centrolign-429efbd
-TRUTH_COMPARE=$CENTROLIGNDIR/compare_truth_aln-429efbd
-TREE_COMPARE=$CENTROLIGNDIR/tree_compare-429efbd
-TREE_DIST=$CENTROLIGNDIR/tree_pair_dist-429efbd
+CENTROLIGN=$CENTROLIGNDIR/centrolign-3337cd7
+TRUTH_COMPARE=$CENTROLIGNDIR/compare_truth_aln-3337cd7
+TREE_COMPARE=$CENTROLIGNDIR/tree_compare-3337cd7
+TREE_DIST=$CENTROLIGNDIR/tree_pair_dist-3337cd7
 CENTRO_SCRIPTS_DIR=/private/groups/patenlab/jeizenga/GitHub/centromere-scripts/
 ANALYZE_CASE=$CENTRO_SCRIPTS_DIR/analyze_case.py
 INFER_TREE=$CENTRO_SCRIPTS_DIR/infer_tree.py

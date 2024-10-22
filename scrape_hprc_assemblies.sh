@@ -43,7 +43,7 @@ echo "sample:" $SAMPLE
 # the web location of the assemblies
 ASSEMBLY_ENDPOINT="https://s3-us-west-2.amazonaws.com/human-pangenomics/submissions/728E4476-8D84-4E8E-BA6D-AC9BF482ECCD--YEAR_1_GENBANK_ASSEM/$SAMPLE/assemblies/year1_f1_assembly_v2_genbank"
 
-# the wb location of the HOR annotations
+# the web location of the HOR annotations
 ANNOTATION_ENDPOINT="https://s3-us-west-2.amazonaws.com/human-pangenomics/submissions/08934468-0AE3-42B6-814A-C5422311A53D--HUMAS_HMMER/$SAMPLE"
 
 echo "assembly endpoint:" $ASSEMBLY_ENDPOINT
