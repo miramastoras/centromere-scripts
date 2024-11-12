@@ -566,7 +566,7 @@ if __name__ == "__main__":
     long_side = 3000
     
     # min length match (for MEMs and MUMs) to be plotted
-    min_length = 700
+    min_length = 400
     
     # plot MUMs in a separate color from MEMs
     plot_mums = True
@@ -584,7 +584,8 @@ if __name__ == "__main__":
     # how steeply to shade matches (closer to 0 -> less steep)
     count_shading_power = 0.5
     
-    add_grid = True
+    # add grid lines across the dotplot
+    add_grid = False
     
     # shade the alignment acording to its % identity within a window
     do_windowed = False

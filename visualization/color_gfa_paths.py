@@ -106,6 +106,10 @@ if __name__ == "__main__":
             paths.append((name, path))
     
     
+    if len(only_path) != 0 and only_path not in [name for name, path in paths]:
+        print("path " + only_path + " is not found in GFA", file = sys.stderr)
+        exit(1)
+        
     #grad_colors = ["#841e62", "#f3aa20", "#346b6d"]
     grad_colors = ["#6b3ec7", "#ea1a7f", "#fec603", "#a8f387", "#16d6fa"]
     null_color = "#a0a0a0"
@@ -121,10 +125,11 @@ if __name__ == "__main__":
         prefix_len = 0
         for node in path:
             if node not in colored:
+                midpoint = round(prefix_len + node_lengths[node] / 2)
                 if only_path:
-                    node_col = gradient(prefix_len, path_len, grad_colors)
+                    node_col = gradient(midpoint, path_len, grad_colors)
                 else:
-                    node_col = color_interp(prefix_len, path_len, col)
+                    node_col = color_interp(midpoint, path_len, col)
                 if len(only_path) == 0:
                     print("{},{},{}".format(node, node_col, node_depth[node]))
                 else:

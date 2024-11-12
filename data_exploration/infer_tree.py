@@ -88,11 +88,11 @@ if __name__ == "__main__":
     
     # make skbio type
     dist_mat = skbio.DistanceMatrix(D, samps)
-    print(dist_mat.to_data_frame(), file = sys.stderr)
+    #print(dist_mat.to_data_frame(), file = sys.stderr)
     
     tree = skbio.tree.nj(dist_mat)
     tree = tree.root_at_midpoint()
     
-    print(tree.ascii_art(), file = sys.stderr)
+    #print(tree.ascii_art(), file = sys.stderr)
     print(tree)
         
