@@ -74,7 +74,7 @@ def parse_fasta(fa):
                 line = line.decode("utf-8")
             line = line.strip()
             if line.startswith(">"):
-                if len(seq) != 0:
+                if len(seq) != 0 or len(name) != 0:
                     parsed.append((name, annotations, seq))
                 divider = next((i for i, char in enumerate(line) if char.isspace()), len(line))
                 name = line[1:divider]
@@ -85,6 +85,8 @@ def parse_fasta(fa):
                 seq = ""
             else:
                 seq += line
+    if len(seq) != 0 or len(name) != 0:
+        parsed.append((name, seq, annotations))
     return parsed
 
 # write a single fasta sequence to an open file
