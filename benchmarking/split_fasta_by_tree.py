@@ -86,7 +86,7 @@ def parse_fasta(fa):
             else:
                 seq += line
     if len(seq) != 0 or len(name) != 0:
-        parsed.append((name, seq, annotations))
+        parsed.append((name, annotations, seq))
     return parsed
 
 # write a single fasta sequence to an open file
