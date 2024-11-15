@@ -10,7 +10,7 @@ import sys
 
 
 def print_rc(seq):
-    comp = {"A":"T", "C":"G", "G":"C", "T":"A"}
+    comp = {"A":"T", "C":"G", "G":"C", "T":"A","N":"N"}
     rc = "".join(comp[c] for c in reversed(seq))
     for i in range(0, len(seq), 80):
         print(rc[i:i+80])
@@ -18,7 +18,7 @@ def print_rc(seq):
 if __name__ == "__main__":
     
     if len(sys.argv) != 2 and len(sys.argv) != 3:
-        print("usage: ./fasta_to_rev_comp.py seq.fasta > rev.fasta\nor./fasta_to_rev_comp.py < seq.fasta > rev.fasta\n", file = sys.stderr)
+        print("usage: ./fasta_to_rev_comp.py seq.fasta > rev.fasta\nor\n./fasta_to_rev_comp.py < seq.fasta > rev.fasta\n", file = sys.stderr)
         sys.exit(1)
     
     f = None
